@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- CSP: solo recursos propios; conexiones WebSocket a cualquier host (lo elige el usuario) -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' ws: wss:; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="dark">
+  <title>Control remoto OBS · Conexión</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/login.css">
+  <script type="module" src="js/login.js"></script>
+</head>
+<body>
+  <main class="login">
+    <!-- Los campos no tienen atributo "name": aunque falle el JavaScript,
+         el formulario nunca enviará la contraseña en la URL. -->
+    <form id="login-form" class="login__card" method="post" novalidate>
+      <div class="login__titlebar">
+        <span data-icon="plug"></span>
+        <span>Conexión al servidor WebSocket</span>
+      </div>
+
+      <div class="login__body">
+        <div class="brand">
+          <span data-icon="logo"></span>
+          <div>
+            <h1>Control remoto OBS</h1>
+            <p>OBS Studio 28 o superior · obs-websocket v5</p>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="url" class="label">URL del servidor</label>
+          <input id="url" class="field" type="text" inputmode="url" required
+                 placeholder="ws://192.168.1.50:4455" spellcheck="false"
+                 autocapitalize="off" autocomplete="url">
+          <small class="help">En OBS: Herramientas → Ajustes del servidor WebSocket.</small>
+        </div>
+
+        <div class="form-row">
+          <label for="password" class="label">Contraseña</label>
+          <div class="password">
+            <input id="password" class="field" type="password"
+                   autocomplete="current-password" spellcheck="false"
+                   placeholder="Déjalo vacío si OBS no usa autenticación">
+            <button type="button" id="toggle-password" class="btn btn--icon"
+                    aria-label="Mostrar contraseña" aria-pressed="false" data-icon="eye"></button>
+          </div>
+        </div>
+
+        <label class="check">
+          <input type="checkbox" id="remember-url">
+          <span>Recordar la URL en este navegador. La contraseña nunca se guarda.</span>
+        </label>
+
+        <p id="login-msg" class="msg" role="alert" hidden></p>
+
+        <button type="submit" id="submit" class="btn btn--primary btn--block">
+          <span class="btn__text">Conectar</span>
+        </button>
+
+        <p class="hint" id="context-hint"></p>
+      </div>
+    </form>
+  </main>
+</body>
+</html>

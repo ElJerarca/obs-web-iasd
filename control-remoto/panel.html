@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' ws: wss:; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="dark">
+  <title>Control remoto OBS · Panel</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/panel.css">
+  <script type="module" src="js/panel.js"></script>
+</head>
+<body class="panel is-offline">
+  <div class="app">
+    <header class="topbar">
+      <div class="topbar__brand"><span data-icon="logoSmall"></span><span>Control remoto OBS</span></div>
+      <span class="topbar__server" id="server-url"></span>
+      <button type="button" id="btn-logout" class="btn btn--ghost btn--small">
+        <span data-icon="logout"></span><span class="btn__text">Salir</span>
+      </button>
+    </header>
+
+    <main class="layout">
+      <!-- Escenas -->
+      <section class="dock dock--scenes" aria-labelledby="scenes-title">
+        <h2 class="dock__title" id="scenes-title"><span data-icon="scenes"></span>Escenas</h2>
+        <div class="dock__body">
+          <ul class="list" id="scene-list"></ul>
+        </div>
+        <div class="dock__toolbar">
+          <button type="button" class="btn btn--icon" id="scenes-refresh" title="Actualizar escenas" aria-label="Actualizar escenas" data-icon="refresh"></button>
+        </div>
+      </section>
+
+      <!-- Fuentes de la escena actual -->
+      <section class="dock dock--sources" aria-labelledby="sources-title">
+        <h2 class="dock__title" id="sources-title">
+          <span data-icon="sources"></span>Fuentes<span class="dock__sub" id="sources-scene"></span>
+        </h2>
+        <div class="dock__body">
+          <ul class="list" id="source-list"></ul>
+        </div>
+      </section>
+
+      <!-- Vista previa -->
+      <section class="preview" aria-label="Vista previa del programa">
+        <div class="preview__stage" id="preview-stage">
+          <img id="preview-img" class="preview__img" alt="Captura de la escena de programa">
+          <div class="preview__placeholder" id="preview-placeholder">
+            <span class="preview__icon"></span>
+            <span class="preview__msg"></span>
+          </div>
+        </div>
+        <div class="preview__bar">
+          <span class="preview__scene">Programa: <strong id="current-scene">—</strong></span>
+          <span class="preview__spacer"></span>
+          <label class="preview__label" for="preview-interval">Actualizar cada</label>
+          <select id="preview-interval" class="field field--small">
+            <option value="1000">1 s</option>
+            <option value="2000">2 s</option>
+            <option value="5000">5 s</option>
+          </select>
+          <button type="button" id="preview-toggle" class="btn btn--small" aria-pressed="true">
+            <span data-icon="image"></span><span class="btn__text">Pausar vista previa</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Mezclador de audio -->
+      <section class="dock dock--mixer" aria-labelledby="mixer-title">
+        <h2 class="dock__title" id="mixer-title">
+          <span data-icon="mixer"></span>Mezclador de audio
+          <button type="button" class="btn btn--icon dock__action" id="mixer-refresh" title="Actualizar mezclador" aria-label="Actualizar mezclador" data-icon="refresh"></button>
+        </h2>
+        <div class="dock__body dock__body--flush">
+          <div class="mixer" id="mixer"></div>
+        </div>
+      </section>
+
+      <!-- Controles -->
+      <section class="dock dock--controls" aria-labelledby="controls-title">
+        <h2 class="dock__title" id="controls-title"><span data-icon="controls"></span>Controles</h2>
+        <div class="dock__body controls">
+          <button type="button" id="btn-stream" class="btn btn--control" aria-pressed="false">
+            <span data-icon="stream"></span><span class="btn__text">Iniciar transmisión</span>
+          </button>
+          <button type="button" id="btn-record" class="btn btn--control" aria-pressed="false">
+            <span data-icon="record"></span><span class="btn__text">Iniciar grabación</span>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="statusbar">
+      <span class="statusbar__item statusbar__item--grow" id="conn-state">
+        <span class="conn-dot"></span><span id="conn-text">Conectando…</span>
+      </span>
+      <span class="statusbar__item" id="stream-item" title="Tiempo de transmisión">
+        <span data-icon="stream"></span><span id="stream-time">00:00:00</span>
+      </span>
+      <span class="statusbar__item" id="record-item" title="Tiempo de grabación">
+        <span data-icon="record"></span><span id="record-time">00:00:00</span>
+      </span>
+      <span class="statusbar__item" id="stat-cpu">CPU: —</span>
+      <span class="statusbar__item" id="stat-fps">— FPS</span>
+    </footer>
+  </div>
+
+  <!-- Estado de conexión (conectando / reconectando / error) -->
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="overlay-title" hidden>
+    <div class="overlay__card">
+      <div class="spinner" id="overlay-spinner"></div>
+      <h2 id="overlay-title">Conectando con OBS…</h2>
+      <p id="overlay-text" aria-live="polite"></p>
+      <div class="overlay__actions" id="overlay-actions" hidden>
+        <button type="button" class="btn btn--primary" id="overlay-retry">Reintentar ahora</button>
+        <button type="button" class="btn" id="overlay-home">Volver al inicio</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+</body>
+</html>

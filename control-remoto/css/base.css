@@ -1,0 +1,151 @@
+/* ==========================================================================
+   Base compartida: variables del tema oscuro (inspirado en OBS), reset,
+   botones, campos, spinner y notificaciones.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  --bg-app: #1b1c22;
+  --bg-dock: #23252d;
+  --bg-dock-title: #2b2d37;
+  --bg-field: #30333d;
+  --bg-hover: #2f323d;
+  --bg-button: #3b3f4b;
+  --bg-button-hover: #474c5a;
+  --bg-button-active: #545a6a;
+  --bg-stage: #121317;
+
+  --border: #363945;
+  --border-strong: #474b59;
+
+  --text: #ececf1;
+  --text-dim: #a3a6b5;
+  --text-muted: #6f7283;
+
+  --accent: #2a4fc9;
+  --accent-hover: #3560e0;
+  --accent-border: #5277f0;
+
+  --danger: #c63f39;
+  --danger-hover: #d8524b;
+  --success: #3fb950;
+  --warning: #d6a83a;
+
+  --radius: 4px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { margin: 0; height: 100%; }
+
+body {
+  background: var(--bg-app);
+  color: var(--text);
+  font: 14px/1.4 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select { font: inherit; color: inherit; }
+h1, h2, p { margin: 0; }
+[hidden] { display: none !important; }
+
+:focus-visible { outline: 2px solid var(--accent-border); outline-offset: 2px; }
+
+[data-icon] { display: inline-flex; align-items: center; justify-content: center; flex: none; }
+svg { display: block; }
+
+/* ---- Botones ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: var(--bg-button);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color .12s, border-color .12s, opacity .12s;
+}
+.btn:hover:not(:disabled) { background: var(--bg-button-hover); }
+.btn:active:not(:disabled) { background: var(--bg-button-active); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+
+.btn--primary { background: var(--accent); border-color: var(--accent-border); color: #fff; }
+.btn--primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+.btn--ghost { background: transparent; }
+.btn--small { min-height: 30px; padding: 4px 10px; font-size: 13px; }
+.btn--block { width: 100%; }
+
+.btn--icon {
+  min-height: 28px;
+  width: 28px;
+  padding: 0;
+  background: transparent;
+  color: var(--text-dim);
+}
+.btn--icon:hover:not(:disabled) { color: var(--text); }
+
+/* ---- Campos ---- */
+.field {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg-field);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+.field::placeholder { color: var(--text-muted); }
+.field:focus { outline: none; border-color: var(--accent-border); box-shadow: 0 0 0 1px var(--accent-border); }
+.field:disabled { opacity: .6; }
+.field--small { width: auto; padding: 4px 8px; font-size: 13px; }
+
+/* ---- Spinner ---- */
+.spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid var(--border-strong);
+  border-top-color: var(--accent-border);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- Notificaciones ---- */
+.toasts {
+  position: fixed;
+  right: 16px;
+  bottom: 44px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(380px, calc(100vw - 32px));
+}
+.toast {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: var(--bg-dock-title);
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--accent-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+  animation: toast-in .2s ease-out;
+  transition: opacity .25s, transform .25s;
+}
+.toast--error { border-left-color: var(--danger); }
+.toast--success { border-left-color: var(--success); }
+.toast--warn { border-left-color: var(--warning); }
+.toast--out { opacity: 0; transform: translateY(6px); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(6px); } }
+
+/* ---- Barras de desplazamiento discretas ---- */
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition: none !important; }
+}

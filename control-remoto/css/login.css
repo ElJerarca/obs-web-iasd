@@ -1,0 +1,78 @@
+/* Página de inicio de sesión */
+
+.login {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background:
+    radial-gradient(900px 500px at 50% -10%, rgba(42, 79, 201, .22), transparent 70%),
+    var(--bg-app);
+}
+
+.login__card {
+  width: min(430px, 100%);
+  background: var(--bg-dock);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+}
+
+.login__titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--bg-dock-title);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.login__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand h1 { font-size: 19px; font-weight: 650; }
+.brand p { color: var(--text-dim); font-size: 13px; }
+
+.form-row { display: flex; flex-direction: column; gap: 6px; }
+.label { font-size: 13px; color: var(--text-dim); font-weight: 500; }
+.help { font-size: 12px; color: var(--text-muted); }
+
+.password { position: relative; }
+.password .field { padding-right: 42px; }
+.password .btn--icon { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); }
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.check input { margin: 2px 0 0; accent-color: var(--accent-border); }
+
+.msg { padding: 10px 12px; border-radius: var(--radius); font-size: 13px; }
+.msg--error { background: rgba(198, 63, 57, .14); border: 1px solid rgba(198, 63, 57, .55); color: #ffbcb8; }
+.msg--warn { background: rgba(214, 168, 58, .12); border: 1px solid rgba(214, 168, 58, .5); color: #f3d98f; }
+
+.btn--primary.btn--block { min-height: 42px; font-weight: 600; }
+.is-busy::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, .35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+
+.hint { font-size: 12px; color: var(--text-muted); }
+.hint:empty { display: none; }
