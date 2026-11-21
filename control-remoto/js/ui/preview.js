@@ -1,11 +1,14 @@
 /**
- * Vista previa por capturas periódicas (GetSourceScreenshot).
+ * Visores de video por capturas periódicas (GetSourceScreenshot).
  * obs-websocket no transmite video continuo: cada captura es una imagen
- * completa codificada en Base64, así que se limita la frecuencia y el tamaño.
+ * completa en Base64, así que se limitan la frecuencia y el tamaño.
  *
- * - Nunca hay dos capturas en curso a la vez (la siguiente se programa al terminar).
- * - Se pausa si la pestaña está oculta, si no hay conexión o si el usuario la apaga.
- * - Ante errores repetidos espera cada vez más (hasta 15 s).
+ * Hay un visor por pantalla: "Programa" siempre y "Vista previa" solo en
+ * Modo Estudio. Un único controlador las actualiza por turnos:
+ * - nunca hay dos capturas en curso a la vez;
+ * - se salta los visores ocultos (p. ej. vista previa fuera del Modo Estudio);
+ * - se pausa con la pestaña oculta, sin conexión o si el usuario la apaga;
+ * - ante errores repetidos espera cada vez más (hasta 15 s).
  */
 
 import { reportError } from '../toast.js'
@@ -22,21 +25,52 @@ function savePrefs (prefs) {
   try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)) } catch { /* sin almacenamiento */ }
 }
 
-export class Preview {
+/** Una pantalla (programa o vista previa). */
+export class ScreenshotView {
+  constructor ({ stage, img, placeholder }) {
+    this.stage = stage
+    this.img = img
+    this.placeholder = placeholder
+    this.source = null
+    placeholder.querySelector('.preview__icon').innerHTML = icons.image
+  }
+
+  get shown () {
+    return this.stage.getClientRects().length > 0 // false si está con display:none
+  }
+
+  setMessage (text) {
+    this.placeholder.querySelector('.preview__msg').textContent = text
+  }
+
+  show (dataUri) {
+    this.img.src = dataUri // data URI: "data:image/jpg;base64,..."
+    this.stage.classList.add('has-image')
+  }
+
+  clear () {
+    this.img.removeAttribute('src')
+    this.stage.classList.remove('has-image')
+  }
+}
+
+export class PreviewController {
   #client
+  #views
   #els
-  #source = null
   #enabled = true
   #visible = true
   #interval = 2000
   #timer = null
   #busy = false
+  #again = false // se pidió refrescar mientras había una captura en curso
   #errors = 0
   #format = 'png'
   #aspect = 16 / 9
 
-  constructor (client, els) {
+  constructor (client, views, els) {
     this.#client = client
+    this.#views = views
     this.#els = els
 
     const prefs = readPrefs()
@@ -48,7 +82,7 @@ export class Preview {
     els.interval.addEventListener('change', () => {
       this.#interval = Number(els.interval.value)
       this.#save()
-      this.#schedule(0)
+      this.refresh()
     })
     this.#renderState()
   }
@@ -63,27 +97,32 @@ export class Preview {
     this.#format = ['jpg', 'jpeg', 'webp', 'png'].find((f) => formats.includes(f)) ?? formats[0] ?? 'png'
     if (video.baseWidth && video.baseHeight) this.#aspect = video.baseWidth / video.baseHeight
     this.#errors = 0
-    this.#schedule(0)
+    this.refresh()
   }
 
-  setSource (name) {
-    this.#source = name
-    this.#schedule(0)
+  /** Asigna la escena de un visor y pide una captura inmediata si cambió. */
+  setSource (view, name) {
+    if (view.source === name) return
+    view.source = name
+    if (!name) view.clear()
+    this.refresh()
   }
 
   setVisible (visible) {
     this.#visible = visible
-    this.#schedule(0)
+    this.refresh()
   }
 
   setEnabled (enabled) {
     this.#enabled = enabled
     this.#save()
     this.#renderState()
-    if (!enabled) {
-      this.#els.img.removeAttribute('src')
-      this.#els.stage.classList.remove('has-image')
-    }
+    if (!enabled) this.#views.forEach((v) => v.clear())
+    this.refresh()
+  }
+
+  /** Programa una captura lo antes posible. */
+  refresh () {
     this.#schedule(0)
   }
 
@@ -92,28 +131,30 @@ export class Preview {
   }
 
   #renderState () {
-    const { toggle, placeholder } = this.#els
+    const { toggle } = this.#els
     toggle.setAttribute('aria-pressed', String(this.#enabled))
-    toggle.querySelector('.btn__text').textContent = this.#enabled ? 'Pausar vista previa' : 'Activar vista previa'
-    placeholder.querySelector('.preview__msg').textContent = this.#enabled
-      ? 'Cargando vista previa…'
-      : 'Vista previa desactivada'
-    placeholder.querySelector('.preview__icon').innerHTML = icons.image
+    toggle.querySelector('.btn__text').textContent = this.#enabled ? 'Pausar' : 'Activar'
+    toggle.title = this.#enabled ? 'Pausar las capturas' : 'Activar las capturas'
+    for (const v of this.#views) v.setMessage(this.#enabled ? 'Cargando imagen…' : 'Vista desactivada')
   }
 
   #active () {
-    return this.#enabled && this.#visible && Boolean(this.#source) && this.#client.connected
+    return this.#enabled && this.#visible && this.#client.connected
   }
 
   #schedule (delay) {
     clearTimeout(this.#timer)
     this.#timer = null
-    if (!this.#active() || this.#busy) return // si hay una captura en curso, ella programa la siguiente
-    this.#timer = setTimeout(() => this.#capture(), delay)
+    if (this.#busy) {
+      if (delay === 0) this.#again = true // la captura en curso programará la siguiente
+      return
+    }
+    if (!this.#active()) return
+    this.#timer = setTimeout(() => this.#captureAll(), delay)
   }
 
-  #targetSize () {
-    const { width, height } = this.#els.stage.getBoundingClientRect()
+  #targetSize (view) {
+    const { width, height } = view.stage.getBoundingClientRect()
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
     // Ajustar al área disponible manteniendo la relación de aspecto del lienzo de OBS
     let w = Math.min(width, height * this.#aspect) * dpr
@@ -121,30 +162,42 @@ export class Preview {
     return { width: w, height: Math.max(8, Math.round(w / this.#aspect)) }
   }
 
-  async #capture () {
+  async #captureAll () {
     if (!this.#active() || this.#busy) return
     this.#busy = true
+    let failed = null
     try {
-      const { width, height } = this.#targetSize()
-      const { imageData } = await this.#client.call('GetSourceScreenshot', {
-        sourceName: this.#source,
-        imageFormat: this.#format,
-        imageWidth: width,
-        imageHeight: height,
-        imageCompressionQuality: QUALITY
-      })
-      if (this.#enabled && imageData) {
-        this.#els.img.src = imageData // data URI: "data:image/jpg;base64,..."
-        this.#els.stage.classList.add('has-image')
+      // Una captura por visor, en secuencia (nunca en paralelo)
+      for (const view of this.#views) {
+        if (!view.source || !view.shown || !this.#active()) continue
+        const source = view.source
+        try {
+          const { width, height } = this.#targetSize(view)
+          const { imageData } = await this.#client.call('GetSourceScreenshot', {
+            sourceName: source,
+            imageFormat: this.#format,
+            imageWidth: width,
+            imageHeight: height,
+            imageCompressionQuality: QUALITY
+          })
+          // Descartar si la escena del visor cambió mientras se capturaba
+          if (this.#enabled && imageData && view.source === source) view.show(imageData)
+        } catch (e) {
+          failed = e
+        }
       }
-      this.#errors = 0
-    } catch (e) {
-      this.#errors++
-      if (this.#errors === 3) reportError(e, 'La vista previa falló')
     } finally {
       this.#busy = false
+      if (failed) {
+        this.#errors++
+        if (this.#errors === 3) reportError(failed, 'La vista previa falló')
+      } else {
+        this.#errors = 0
+      }
+      const again = this.#again
+      this.#again = false
       const delay = this.#errors ? Math.min(this.#interval * 2 ** this.#errors, 15000) : this.#interval
-      this.#schedule(delay)
+      this.#schedule(again ? 0 : delay)
     }
   }
 }

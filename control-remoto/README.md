@@ -5,11 +5,19 @@ WebSocket (obs-websocket v5, incluido en OBS 28 o superior). No tiene
 dependencias ni paso de compilación: son archivos estáticos.
 
 - **Inicio de sesión** con la URL del servidor y la contraseña.
-- **Escenas**: lista y cambio de la escena de programa.
-- **Fuentes**: elementos de la escena actual, con botón para mostrarlos u ocultarlos.
+- **Disposición tipo OBS**: arriba las pantallas y abajo Escenas, Fuentes,
+  Mezclador de audio y Controles.
+- **Modo Estudio** (se activa y desactiva desde la app): *Vista previa* a la
+  izquierda y *Programa* a la derecha. En el centro, el botón **Transición** y
+  los selectores de tipo y duración. Al hacer clic en una escena, va a la vista
+  previa; la escena al aire lleva la marca **PGM**.
+- **Escenas**: lista y cambio de escena (de programa, o de vista previa en Modo Estudio).
+- **Fuentes**: elementos de la escena seleccionada, con botones para mostrar u
+  ocultar (ojo) y bloquear (candado).
 - **Mezclador de audio**: volumen, silencio y medidores animados en tiempo real.
-- **Controles**: iniciar y detener la transmisión y la grabación, con cronómetro.
-- **Vista previa**: capturas periódicas de la escena (1, 2 o 5 s), que se pueden pausar.
+- **Controles**: transmisión, grabación (con cronómetro), cámara virtual y Modo Estudio.
+- **Pantallas**: capturas periódicas de programa y de vista previa (1, 2 o 5 s),
+  que se pueden pausar.
 - **Errores y reconexión**: contraseña incorrecta, servidor caído o reiniciado,
   pérdida de red y reconexión automática con espera exponencial.
 
@@ -34,11 +42,12 @@ control-remoto/
     ├── panel.js          Orquestación del panel
     └── ui/
         ├── icons.js      Iconos SVG propios
-        ├── scenes.js     Panel Escenas
+        ├── scenes.js     Panel Escenas y estado del Modo Estudio
         ├── sources.js    Panel Fuentes
         ├── audio.js      Mezclador y medidores (canvas + requestAnimationFrame)
-        ├── controls.js   Transmisión y grabación
-        ├── preview.js    Vista previa por capturas
+        ├── controls.js   Transmisión, grabación y cámara virtual
+        ├── transitions.js Botón Transición, tipo y duración (Modo Estudio)
+        ├── preview.js    Pantallas de programa y vista previa por capturas
         └── status.js     Barra de estado (conexión, CPU, FPS)
 ```
 
@@ -146,7 +155,12 @@ server {
 ### Otras limitaciones conocidas
 
 - Las fuentes dentro de un **grupo** no se listan; el grupo aparece como un solo elemento.
-- No muestra la escena de vista previa del **Modo Estudio** ni el panel de transiciones.
+- No incluye las **transiciones rápidas** ni la **barra T** de OBS. Las
+  transiciones rápidas son una configuración de la interfaz de OBS que el
+  protocolo no expone. Se usa la transición elegida en el selector.
+- Con dos pantallas en Modo Estudio se piden dos capturas por ciclo. Si OBS va
+  justo, sube el intervalo a 5 s.
+- La cámara virtual queda deshabilitada si OBS no la tiene disponible.
 - El fader vertical usa `writing-mode` en el `input range` (Chrome 124+,
   Firefox, Safari 17.4+). En navegadores más antiguos se ve horizontal, pero
   funciona.
@@ -163,10 +177,15 @@ pero conviene confirmar estos detalles en tu versión:
 | Orden de `GetSceneList.scenes` y `GetSceneItemList.sceneItems` | Índice 0 = el de abajo; se invierten para igualar la vista de OBS |
 | `GetInputList` | Incluye las entradas de audio globales (Audio del escritorio, Mic/Aux) |
 | `outputState` de `StreamStateChanged` / `RecordStateChanged` | Valores `OBS_WEBSOCKET_OUTPUT_STARTING/STARTED/STOPPING/STOPPED…` |
+| `GetSceneItemList.sceneItems[].sceneItemLocked` | Indica si el elemento está bloqueado |
 | `GetSourceScreenshot.imageFormat` | Se elige de `GetVersion.supportedImageFormats` (jpg → png) |
 
 Peticiones usadas: `GetSceneList`, `SetCurrentProgramScene`, `GetSceneItemList`,
-`SetSceneItemEnabled`, `GetInputList`, `GetInputVolume`, `SetInputVolume`,
+`SetSceneItemEnabled`, `SetSceneItemLocked`, `GetStudioModeEnabled`,
+`SetStudioModeEnabled`, `GetCurrentPreviewScene`, `SetCurrentPreviewScene`,
+`TriggerStudioModeTransition`, `GetSceneTransitionList`, `GetCurrentSceneTransition`,
+`SetCurrentSceneTransition`, `SetCurrentSceneTransitionDuration`,
+`GetVirtualCamStatus`, `StartVirtualCam`, `StopVirtualCam`, `GetInputList`, `GetInputVolume`, `SetInputVolume`,
 `GetInputMute`, `SetInputMute`, `GetStreamStatus`, `StartStream`, `StopStream`,
 `GetRecordStatus`, `StartRecord`, `StopRecord`, `GetVersion`, `GetVideoSettings`,
 `GetStats`, `GetSourceScreenshot`.

@@ -3,7 +3,8 @@
  * Cada módulo se ocupa de un panel; este archivo solo coordina:
  *   - conexión y reconexión (ConnectionManager)
  *   - resincronización completa tras cada (re)conexión
- *   - pausa de medidores y vista previa cuando la pestaña está oculta
+ *   - Modo Estudio: disposición de pantallas y escena de las fuentes
+ *   - pausa de medidores y capturas cuando la pestaña está oculta
  */
 
 import { ObsClient, EventSubscription } from './obs-client.js'
@@ -14,11 +15,13 @@ import { ScenesPanel } from './ui/scenes.js'
 import { SourcesPanel } from './ui/sources.js'
 import { AudioMixer } from './ui/audio.js'
 import { Controls } from './ui/controls.js'
-import { Preview } from './ui/preview.js'
+import { TransitionsPanel } from './ui/transitions.js'
+import { ScreenshotView, PreviewController } from './ui/preview.js'
 import { StatusBar } from './ui/status.js'
 import { toast, reportError } from './toast.js'
 
-// Eventos normales + niveles de audio (alto volumen, ~20 mensajes/s)
+// Eventos normales (incluye Ui: StudioModeStateChanged) + niveles de audio
+// (InputVolumeMeters es de alto volumen, ~20 mensajes/s)
 const SUBS_VISIBLE = EventSubscription.All | EventSubscription.InputVolumeMeters
 // Con la pestaña oculta no se piden los niveles: se ahorra red y CPU
 const SUBS_HIDDEN = EventSubscription.All
@@ -52,28 +55,56 @@ function main (session) {
     fps: $('stat-fps')
   })
   const sources = new SourcesPanel(client, $('source-list'), $('sources-scene'))
-  const preview = new Preview(client, {
-    stage: $('preview-stage'),
-    img: $('preview-img'),
-    placeholder: $('preview-placeholder'),
+  const programView = new ScreenshotView({ stage: $('program-stage'), img: $('program-img'), placeholder: $('program-placeholder') })
+  const previewView = new ScreenshotView({ stage: $('preview-stage'), img: $('preview-img'), placeholder: $('preview-placeholder') })
+  const screenshots = new PreviewController(client, [programView, previewView], {
     toggle: $('preview-toggle'),
     interval: $('preview-interval')
   })
-  const scenes = new ScenesPanel(client, $('scene-list'), {
-    onSceneChange: (name) => {
-      $('current-scene').textContent = name ?? '—'
-      preview.setSource(name)
-      sources.load(name).catch((e) => reportError(e, 'No se pudieron cargar las fuentes'))
-    }
+  const transitions = new TransitionsPanel(client, {
+    trigger: $('btn-transition'),
+    select: $('transition-select'),
+    duration: $('transition-duration')
   })
   const mixer = new AudioMixer(client, $('mixer'))
   const controls = new Controls(client, {
     streamButton: $('btn-stream'),
     recordButton: $('btn-record'),
+    virtualCamButton: $('btn-virtualcam'),
     streamTime: $('stream-time'),
     recordTime: $('record-time'),
     streamItem: $('stream-item'),
     recordItem: $('record-item')
+  })
+
+  // ---- Estado de escenas y Modo Estudio ----
+  let selectedScene // escena cuyas fuentes se muestran
+  const studioBtn = $('btn-studio')
+
+  const scenes = new ScenesPanel(client, $('scene-list'), {
+    onChange: ({ studio, program, preview, selected }) => {
+      document.body.classList.toggle('is-studio', studio)
+      studioBtn.classList.toggle('is-on', studio)
+      studioBtn.setAttribute('aria-pressed', String(studio))
+      transitions.setStudio(studio)
+
+      $('label-program').textContent = program ?? '—'
+      $('label-preview').textContent = preview ?? '—'
+      screenshots.setSource(programView, program)
+      screenshots.setSource(previewView, studio ? preview : null)
+
+      // En Modo Estudio las fuentes son las de la escena en vista previa (como OBS)
+      if (selected !== selectedScene) {
+        selectedScene = selected
+        sources.load(selected).catch((e) => reportError(e, 'No se pudieron cargar las fuentes'))
+      }
+    }
+  })
+
+  studioBtn.addEventListener('click', async () => {
+    studioBtn.disabled = true
+    await scenes.toggleStudio()
+    studioBtn.disabled = false
   })
 
   // ---- Botones de actualización manual ----
@@ -84,12 +115,14 @@ function main (session) {
 
   // ---- Sincronización completa tras conectar o reconectar ----
   conn.addEventListener('ready', async () => {
+    selectedScene = undefined // forzar recarga de fuentes
     applyVisibility()
     const results = await Promise.allSettled([
       scenes.load(),
+      transitions.load(),
       mixer.load(),
       controls.load(),
-      preview.init(),
+      screenshots.init(),
       status.load()
     ])
     for (const r of results) {
@@ -180,9 +213,16 @@ function main (session) {
   function applyVisibility () {
     const hidden = document.hidden
     client.reidentify(hidden ? SUBS_HIDDEN : SUBS_VISIBLE)
-    preview.setVisible(!hidden)
+    screenshots.setVisible(!hidden)
   }
   document.addEventListener('visibilitychange', applyVisibility)
+
+  // Al cambiar el tamaño (p. ej. Modo Estudio muestra otra pantalla) pedir capturas nuevas
+  let resizeTimer = null
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer)
+    resizeTimer = setTimeout(() => screenshots.refresh(), 300)
+  })
 
   // OBS avisa antes de cerrarse; la reconexión automática se encarga del resto
   client.on('ExitStarted', () => toast('OBS se está cerrando.', 'warn'))

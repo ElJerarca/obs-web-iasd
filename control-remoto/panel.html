@@ -22,55 +22,77 @@
     </header>
 
     <main class="layout">
-      <!-- Escenas -->
-      <section class="dock dock--scenes" aria-labelledby="scenes-title">
-        <h2 class="dock__title" id="scenes-title"><span data-icon="scenes"></span>Escenas</h2>
-        <div class="dock__body">
-          <ul class="list" id="scene-list"></ul>
-        </div>
-        <div class="dock__toolbar">
-          <button type="button" class="btn btn--icon" id="scenes-refresh" title="Actualizar escenas" aria-label="Actualizar escenas" data-icon="refresh"></button>
-        </div>
-      </section>
-
-      <!-- Fuentes de la escena actual -->
-      <section class="dock dock--sources" aria-labelledby="sources-title">
-        <h2 class="dock__title" id="sources-title">
-          <span data-icon="sources"></span>Fuentes<span class="dock__sub" id="sources-scene"></span>
-        </h2>
-        <div class="dock__body">
-          <ul class="list" id="source-list"></ul>
-        </div>
-      </section>
-
-      <!-- Vista previa -->
-      <section class="preview" aria-label="Vista previa del programa">
-        <div class="preview__stage" id="preview-stage">
-          <img id="preview-img" class="preview__img" alt="Captura de la escena de programa">
-          <div class="preview__placeholder" id="preview-placeholder">
-            <span class="preview__icon"></span>
-            <span class="preview__msg"></span>
+      <!-- ===== Zona superior: Vista previa | Transición | Programa ===== -->
+      <section class="displays" aria-label="Pantallas">
+        <!-- Vista previa: solo en Modo Estudio -->
+        <div class="display display--preview">
+          <h2 class="display__title">Vista previa: <span id="label-preview">—</span></h2>
+          <div class="display__stage" id="preview-stage">
+            <img id="preview-img" class="display__img" alt="Captura de la escena en vista previa">
+            <div class="display__placeholder" id="preview-placeholder">
+              <span class="preview__icon"></span><span class="preview__msg"></span>
+            </div>
           </div>
         </div>
-        <div class="preview__bar">
-          <span class="preview__scene">Programa: <strong id="current-scene">—</strong></span>
-          <span class="preview__spacer"></span>
-          <label class="preview__label" for="preview-interval">Actualizar cada</label>
+
+        <!-- Columna central de transición: solo en Modo Estudio -->
+        <div class="transition-col" aria-label="Transición">
+          <button type="button" id="btn-transition" class="btn btn--transition">
+            <span data-icon="transition"></span><span>Transición</span>
+          </button>
+          <label class="transition-col__label" for="transition-select">Tipo</label>
+          <select id="transition-select" class="field field--small"></select>
+          <label class="transition-col__label" for="transition-duration">Duración (ms)</label>
+          <input id="transition-duration" class="field field--small" type="number" min="50" max="20000" step="50" value="300">
+        </div>
+
+        <!-- Programa: siempre visible -->
+        <div class="display display--program">
+          <h2 class="display__title"><span class="display__prefix">Programa: </span><span id="label-program">—</span></h2>
+          <div class="display__stage" id="program-stage">
+            <img id="program-img" class="display__img" alt="Captura de la escena de programa">
+            <div class="display__placeholder" id="program-placeholder">
+              <span class="preview__icon"></span><span class="preview__msg"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="displays__bar">
+          <span class="displays__hint">Imagen por capturas periódicas (no es video en vivo)</span>
+          <span class="displays__spacer"></span>
+          <label class="displays__label" for="preview-interval">Actualizar cada</label>
           <select id="preview-interval" class="field field--small">
             <option value="1000">1 s</option>
             <option value="2000">2 s</option>
             <option value="5000">5 s</option>
           </select>
           <button type="button" id="preview-toggle" class="btn btn--small" aria-pressed="true">
-            <span data-icon="image"></span><span class="btn__text">Pausar vista previa</span>
+            <span data-icon="image"></span><span class="btn__text">Pausar</span>
           </button>
         </div>
       </section>
 
-      <!-- Mezclador de audio -->
+      <!-- ===== Zona inferior: paneles ===== -->
+      <section class="dock dock--scenes" aria-labelledby="scenes-title">
+        <h2 class="dock__title" id="scenes-title">
+          Escenas
+          <button type="button" class="btn btn--icon dock__action" id="scenes-refresh" title="Actualizar escenas" aria-label="Actualizar escenas" data-icon="refresh"></button>
+        </h2>
+        <div class="dock__body">
+          <ul class="list" id="scene-list"></ul>
+        </div>
+      </section>
+
+      <section class="dock dock--sources" aria-labelledby="sources-title">
+        <h2 class="dock__title" id="sources-title">Fuentes<span class="dock__sub" id="sources-scene"></span></h2>
+        <div class="dock__body">
+          <ul class="list" id="source-list"></ul>
+        </div>
+      </section>
+
       <section class="dock dock--mixer" aria-labelledby="mixer-title">
         <h2 class="dock__title" id="mixer-title">
-          <span data-icon="mixer"></span>Mezclador de audio
+          Mezclador de audio
           <button type="button" class="btn btn--icon dock__action" id="mixer-refresh" title="Actualizar mezclador" aria-label="Actualizar mezclador" data-icon="refresh"></button>
         </h2>
         <div class="dock__body dock__body--flush">
@@ -78,15 +100,20 @@
         </div>
       </section>
 
-      <!-- Controles -->
       <section class="dock dock--controls" aria-labelledby="controls-title">
-        <h2 class="dock__title" id="controls-title"><span data-icon="controls"></span>Controles</h2>
+        <h2 class="dock__title" id="controls-title">Controles</h2>
         <div class="dock__body controls">
           <button type="button" id="btn-stream" class="btn btn--control" aria-pressed="false">
             <span data-icon="stream"></span><span class="btn__text">Iniciar transmisión</span>
           </button>
           <button type="button" id="btn-record" class="btn btn--control" aria-pressed="false">
             <span data-icon="record"></span><span class="btn__text">Iniciar grabación</span>
+          </button>
+          <button type="button" id="btn-virtualcam" class="btn btn--control" aria-pressed="false">
+            <span data-icon="camera"></span><span class="btn__text">Iniciar cámara virtual</span>
+          </button>
+          <button type="button" id="btn-studio" class="btn btn--control" aria-pressed="false">
+            <span data-icon="studio"></span><span class="btn__text">Modo Estudio</span>
           </button>
         </div>
       </section>

@@ -1,7 +1,9 @@
 /* ==========================================================================
-   Panel principal: disposición por paneles similar a OBS Studio.
-   Escritorio: escenas/fuentes a la izquierda, vista previa arriba,
-   mezclador y controles abajo. Móvil: una sola columna.
+   Panel principal con la disposición de OBS Studio:
+   - arriba: Vista previa | columna de transición | Programa (Modo Estudio)
+             o solo Programa (modo normal);
+   - abajo: Escenas | Fuentes | Mezclador de audio | Controles.
+   En móvil todo pasa a una sola columna.
    ========================================================================== */
 
 body.panel { overflow: hidden; }
@@ -18,8 +20,8 @@ body.panel { overflow: hidden; }
   display: flex;
   align-items: center;
   gap: 14px;
-  min-height: 40px;
-  padding: 4px 10px 4px 12px;
+  min-height: 36px;
+  padding: 2px 10px 2px 12px;
   background: var(--bg-dock-title);
   border-bottom: 1px solid var(--border);
 }
@@ -34,27 +36,125 @@ body.panel { overflow: hidden; }
   font: 12px var(--font-mono);
 }
 
-/* ---- Rejilla de paneles ---- */
+/* ---- Rejilla principal ---- */
 .layout {
   min-height: 0;
   display: grid;
   gap: 4px;
   padding: 4px;
-  grid-template-columns: minmax(220px, 20%) minmax(0, 1fr) minmax(240px, 21%);
-  grid-template-rows: minmax(0, 1fr) minmax(260px, 38%);
+  grid-template-columns:
+    minmax(170px, 1fr)   /* escenas */
+    minmax(190px, 1.1fr) /* fuentes */
+    minmax(0, 1.6fr)     /* mezclador */
+    minmax(200px, 1fr);  /* controles */
+  grid-template-rows: minmax(0, 1fr) minmax(250px, 37%);
   grid-template-areas:
-    "scenes  preview preview"
-    "sources mixer   controls";
+    "displays displays displays displays"
+    "scenes   sources  mixer    controls";
 }
 
+.displays { grid-area: displays; }
 .dock--scenes { grid-area: scenes; }
 .dock--sources { grid-area: sources; }
-.preview { grid-area: preview; }
 .dock--mixer { grid-area: mixer; }
 .dock--controls { grid-area: controls; }
 
 /* Sin conexión: los controles no responden (el overlay explica el motivo) */
 body.is-offline .layout { pointer-events: none; opacity: .6; }
+
+/* ---- Zona de pantallas ---- */
+.displays {
+  min-height: 0;
+  display: grid;
+  gap: 0 10px;
+  padding: 6px 10px 0;
+  background: var(--bg-dock);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  /* Modo normal: solo Programa a todo el ancho */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "program" "bar";
+}
+.display--preview { grid-area: preview; }
+.display--program { grid-area: program; }
+.transition-col { grid-area: transition; }
+/* Fuera del Modo Estudio no hay vista previa ni columna de transición */
+body:not(.is-studio) .display--preview,
+body:not(.is-studio) .transition-col { display: none; }
+.displays__bar { grid-area: bar; }
+
+/* Modo Estudio: dos pantallas con la columna de transición en medio */
+body.is-studio .displays {
+  grid-template-columns: minmax(0, 1fr) 190px minmax(0, 1fr);
+  grid-template-areas: "preview transition program" "bar bar bar";
+}
+
+.display { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.display__title {
+  padding: 2px 2px 6px;
+  font-size: 18px;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Fuera del Modo Estudio OBS no muestra el rótulo "Programa:" */
+body:not(.is-studio) .display__prefix { display: none; }
+body:not(.is-studio) .display__title { font-size: 14px; font-weight: 600; color: var(--text-dim); }
+
+.display__stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--bg-stage);
+}
+.display__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.display__stage.has-image .display__img { opacity: 1; }
+.display__stage.has-image .display__placeholder { display: none; }
+.display__placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+}
+
+/* Columna central de transición */
+.transition-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding-top: 28px;
+}
+.btn--transition { width: 100%; min-height: 40px; font-weight: 600; background: #4b5163; }
+.btn--transition:hover:not(:disabled) { background: #5a6176; }
+.transition-col__label { margin-top: 6px; font-size: 12px; color: var(--text-dim); }
+.transition-col .field--small { width: 100%; }
+
+.displays__bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 6px 0;
+  font-size: 12.5px;
+}
+.displays__hint { color: var(--text-muted); }
+.displays__spacer { flex: 1; }
+.displays__label { color: var(--text-dim); }
 
 /* ---- Panel (dock) ---- */
 .dock {
@@ -72,14 +172,13 @@ body.is-offline .layout { pointer-events: none; opacity: .6; }
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 32px;
-  padding: 4px 10px;
+  min-height: 30px;
+  padding: 3px 8px 3px 10px;
   background: var(--bg-dock-title);
   border-bottom: 1px solid var(--border);
   font-size: 13px;
   font-weight: 600;
 }
-.dock__title > [data-icon] { color: var(--text-dim); }
 .dock__sub {
   min-width: 0;
   overflow: hidden;
@@ -94,23 +193,16 @@ body.is-offline .layout { pointer-events: none; opacity: .6; }
 .dock__body { flex: 1; min-height: 0; overflow: auto; padding: 4px; }
 .dock__body--flush { padding: 0; }
 
-.dock__toolbar {
-  display: flex;
-  gap: 2px;
-  padding: 3px 4px;
-  border-top: 1px solid var(--border);
-}
-
 /* ---- Listas (escenas y fuentes) ---- */
-.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
 
 .list__item {
   width: 100%;
-  min-height: 34px;
+  min-height: 30px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 6px 4px 10px;
+  gap: 6px;
+  padding: 3px 4px 3px 8px;
   border: 1px solid transparent;
   border-radius: var(--radius);
   background: transparent;
@@ -122,6 +214,20 @@ button.list__item:hover { background: var(--bg-hover); }
 .list__item.is-pending { background: rgba(42, 79, 201, .35); }
 
 .list__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Marca "al aire" (PGM) de la escena de programa en Modo Estudio */
+.scene__badge {
+  display: none;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  line-height: 16px;
+}
+.scene.is-program .scene__badge { display: inline-block; }
 
 .list__empty {
   display: flex;
@@ -138,61 +244,14 @@ button.list__item:hover { background: var(--bg-hover); }
 .source.is-hidden .list__label { color: var(--text-muted); }
 .source:hover { background: var(--bg-hover); }
 .eye[aria-pressed="false"] { color: var(--text-muted); }
-
-/* ---- Vista previa ---- */
-.preview {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  background: var(--bg-dock);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.preview__stage {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  background: var(--bg-stage);
-}
-.preview__img { position: absolute; inset: 8px; width: calc(100% - 16px); height: calc(100% - 16px); object-fit: contain; opacity: 0; transition: opacity .2s; }
-.preview__stage.has-image .preview__img { opacity: 1; }
-.preview__stage.has-image .preview__placeholder { display: none; }
-
-.preview__placeholder {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--text-muted);
-}
-
-.preview__bar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 10px;
-  padding: 5px 10px;
-  background: var(--bg-dock-title);
-  border-top: 1px solid var(--border);
-  font-size: 13px;
-}
-.preview__scene { color: var(--text-dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.preview__scene strong { color: var(--text); font-weight: 600; }
-.preview__spacer { flex: 1; }
-.preview__label { color: var(--text-dim); }
+.lock[aria-pressed="false"] { color: var(--text-muted); }
 
 /* ---- Mezclador ---- */
 .mixer {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   height: 100%;
-  padding: 6px;
+  padding: 4px;
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -200,13 +259,13 @@ button.list__item:hover { background: var(--bg-hover); }
 
 .channel {
   flex: 0 0 auto;
-  width: 96px;
+  width: 92px;
   min-height: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   justify-items: center;
-  gap: 4px;
-  padding: 6px 6px 4px;
+  gap: 3px;
+  padding: 5px 5px 3px;
   background: #1e2027;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -241,16 +300,19 @@ button.list__item:hover { background: var(--bg-hover); }
 .channel.is-muted .channel__name { color: var(--text-dim); }
 
 /* ---- Controles ---- */
-.controls { display: flex; flex-direction: column; gap: 6px; padding: 6px; }
-.btn--control { width: 100%; min-height: 44px; font-weight: 500; }
+.controls { display: flex; flex-direction: column; gap: 5px; padding: 5px; }
+.btn--control { width: 100%; min-height: 34px; flex: none; }
 .btn--control.is-live { background: var(--danger); border-color: #e3655e; color: #fff; }
 .btn--control.is-live:hover:not(:disabled) { background: var(--danger-hover); }
+/* Modo Estudio activo: azul, como en OBS */
+#btn-studio.is-on { background: var(--accent); border-color: var(--accent-border); color: #fff; }
+#btn-studio.is-on:hover:not(:disabled) { background: var(--accent-hover); }
 
 /* ---- Barra de estado ---- */
 .statusbar {
   display: flex;
   align-items: stretch;
-  min-height: 30px;
+  min-height: 28px;
   overflow-x: auto;
   white-space: nowrap;
   background: var(--bg-dock-title);
@@ -303,26 +365,42 @@ button.list__item:hover { background: var(--bg-hover); }
 .overlay__card p { color: var(--text-dim); overflow-wrap: anywhere; }
 .overlay__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 4px; }
 
-/* ---- Pantallas medianas ---- */
-@media (max-width: 1100px) {
-  .layout { grid-template-columns: minmax(200px, 26%) minmax(0, 1fr) minmax(210px, 26%); }
+/* ---- Pantallas medianas: el mezclador baja a su propia fila ---- */
+@media (max-width: 1180px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(200px, .9fr);
+    grid-template-rows: minmax(300px, 1fr) minmax(220px, auto) 250px;
+    grid-template-areas:
+      "displays displays displays"
+      "scenes   sources  controls"
+      "mixer    mixer    mixer";
+  }
+  body.panel { overflow: auto; }
+  .app { height: auto; min-height: 100dvh; }
+  .displays { height: 60vh; }
 }
 
 /* ---- Móvil / tablet vertical: una columna con scroll ---- */
-@media (max-width: 860px) {
-  body.panel { overflow: auto; }
-  .app { height: auto; min-height: 100dvh; }
+@media (max-width: 760px) {
   .topbar { position: sticky; top: 0; z-index: 10; }
   .topbar__brand span:last-child { display: none; }
   .layout {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;
-    grid-template-areas: "preview" "controls" "scenes" "sources" "mixer";
+    grid-template-areas: "displays" "controls" "scenes" "sources" "mixer";
   }
-  .preview__stage { flex: none; aspect-ratio: 16 / 9; }
+  .displays { height: auto; }
+  body.is-studio .displays {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "preview" "transition" "program" "bar";
+  }
+  .display__stage { flex: none; aspect-ratio: 16 / 9; }
+  .display__title { font-size: 15px; }
+  .transition-col { padding: 8px 0; display: grid; grid-template-columns: 1fr 1fr; align-items: end; }
+  body.is-studio .btn--transition { grid-column: 1 / -1; }
   .dock--scenes .dock__body, .dock--sources .dock__body { max-height: 300px; }
   .dock--mixer .dock__body { flex: none; height: 280px; }
-  .controls { flex-direction: row; }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; }
   .list__item { min-height: 42px; } /* objetivos táctiles más grandes */
   .statusbar { position: sticky; bottom: 0; }
 }

@@ -22,7 +22,9 @@ export class SourcesPanel {
     const forCurrent = (fn) => (data) => { if (data.sceneName === this.#scene) fn(data) }
 
     client.on('SceneItemEnableStateChanged', forCurrent(({ sceneItemId, sceneItemEnabled }) =>
-      this.#updateItem(sceneItemId, sceneItemEnabled)))
+      this.#updateItem(sceneItemId, { enabled: sceneItemEnabled })))
+    client.on('SceneItemLockStateChanged', forCurrent(({ sceneItemId, sceneItemLocked }) =>
+      this.#updateItem(sceneItemId, { locked: sceneItemLocked })))
     client.on('SceneItemCreated', forCurrent(reload))
     client.on('SceneItemRemoved', forCurrent(reload))
     client.on('SceneItemListReindexed', forCurrent(reload))
@@ -46,6 +48,7 @@ export class SourcesPanel {
       id: i.sceneItemId,
       name: i.sourceName,
       enabled: i.sceneItemEnabled,
+      locked: Boolean(i.sceneItemLocked),
       isGroup: Boolean(i.isGroup)
     })).reverse()
     this.#render()
@@ -73,11 +76,17 @@ export class SourcesPanel {
       class: 'btn btn--icon eye',
       onclick: () => this.#toggle(item, eye)
     })
+    const lock = el('button', {
+      type: 'button',
+      class: 'btn btn--icon lock',
+      onclick: () => this.#toggleLock(item, lock)
+    })
     const row = el('li', { dataset: { id: item.id } },
       el('div', { class: 'list__item source' },
         el('span', { class: 'source__icon', html: item.isGroup ? icons.group : icons.sources }),
         el('span', { class: 'list__label', text: item.name, title: item.name }),
-        eye
+        eye,
+        lock
       )
     )
     this.#paint(row, item)
@@ -92,12 +101,19 @@ export class SourcesPanel {
     const action = item.enabled ? 'Ocultar' : 'Mostrar'
     eye.setAttribute('aria-label', `${action} ${item.name}`)
     eye.title = action
+
+    const lock = row.querySelector('.lock')
+    lock.innerHTML = item.locked ? icons.lock : icons.unlock
+    lock.setAttribute('aria-pressed', String(item.locked))
+    const lockAction = item.locked ? 'Desbloquear' : 'Bloquear'
+    lock.setAttribute('aria-label', `${lockAction} ${item.name}`)
+    lock.title = lockAction
   }
 
-  #updateItem (id, enabled) {
+  #updateItem (id, changes) {
     const item = this.#items.find((i) => i.id === id)
     if (!item) return
-    item.enabled = enabled
+    Object.assign(item, changes)
     const row = this.#list.querySelector(`li[data-id="${Number(id)}"]`)
     if (row) this.#paint(row, item)
   }
@@ -113,6 +129,22 @@ export class SourcesPanel {
       })
     } catch (e) {
       reportError(e, `No se pudo cambiar la visibilidad de "${item.name}"`)
+    } finally {
+      button.disabled = false
+    }
+  }
+
+  async #toggleLock (item, button) {
+    button.disabled = true
+    try {
+      // El cambio visual llega con el evento SceneItemLockStateChanged
+      await this.#client.call('SetSceneItemLocked', {
+        sceneName: this.#scene,
+        sceneItemId: item.id,
+        sceneItemLocked: !item.locked
+      })
+    } catch (e) {
+      reportError(e, `No se pudo bloquear/desbloquear "${item.name}"`)
     } finally {
       button.disabled = false
     }

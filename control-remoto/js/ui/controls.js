@@ -45,7 +45,7 @@ class OutputControl {
 
   /** Actualiza el contador; se llama una vez por segundo mientras está activo. */
   async tick () {
-    if (!RUNNING.has(this.#state) || this.#busy) return
+    if (!this.#cfg.timeEl || !RUNNING.has(this.#state) || this.#busy) return
     this.#busy = true
     try {
       const s = await this.#client.call(this.#cfg.statusRequest)
@@ -53,6 +53,12 @@ class OutputControl {
     } catch { /* se reintenta en el siguiente segundo */ } finally {
       this.#busy = false
     }
+  }
+
+  /** Marca el control como no disponible en este OBS. */
+  unavailable () {
+    this.#cfg.button.disabled = true
+    this.#cfg.button.title = 'No disponible en este OBS'
   }
 
   #apply (state) {
@@ -73,10 +79,11 @@ class OutputControl {
     button.disabled = transitional
     button.classList.toggle('is-live', running)
     button.setAttribute('aria-pressed', String(running))
-    timeItem.classList.toggle('is-live', running)
+    timeItem?.classList.toggle('is-live', running)
   }
 
   #setTime (timecode) {
+    if (!this.#cfg.timeEl) return
     // outputTimecode tiene el formato HH:MM:SS.mmm; se muestra sin milisegundos
     this.#cfg.timeEl.textContent = timecode ? String(timecode).split('.')[0] : '00:00:00'
   }
@@ -120,10 +127,27 @@ export class Controls {
       confirmStop: null,
       labels: { start: 'Iniciar grabación', stop: 'Detener grabación', starting: 'Iniciando…', stopping: 'Deteniendo…' }
     })
+
+    this.virtualCam = new OutputControl(client, {
+      button: els.virtualCamButton,
+      timeEl: null,
+      timeItem: null,
+      event: 'VirtualcamStateChanged',
+      statusRequest: 'GetVirtualCamStatus',
+      startRequest: 'StartVirtualCam',
+      stopRequest: 'StopVirtualCam',
+      confirmStop: null,
+      labels: { start: 'Iniciar cámara virtual', stop: 'Detener cámara virtual', starting: 'Iniciando…', stopping: 'Deteniendo…' }
+    })
   }
 
   load () {
-    return Promise.all([this.stream.refresh(), this.record.refresh()])
+    // La cámara virtual puede no estar disponible (p. ej. Linux sin v4l2loopback): no bloquea al resto
+    return Promise.all([
+      this.stream.refresh(),
+      this.record.refresh(),
+      this.virtualCam.refresh().catch(() => { this.virtualCam.unavailable() })
+    ])
   }
 
   tick () {
