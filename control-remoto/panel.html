@@ -59,9 +59,12 @@
 
         <div class="displays__bar">
           <span class="displays__hint">Imagen por capturas periódicas (no es video en vivo)</span>
+          <span class="displays__rate" id="preview-rate" aria-live="off"></span>
           <span class="displays__spacer"></span>
           <label class="displays__label" for="preview-interval">Actualizar cada</label>
           <select id="preview-interval" class="field field--small">
+            <option value="250">0,25 s (fluido, más carga)</option>
+            <option value="500">0,5 s</option>
             <option value="1000">1 s</option>
             <option value="2000">2 s</option>
             <option value="5000">5 s</option>

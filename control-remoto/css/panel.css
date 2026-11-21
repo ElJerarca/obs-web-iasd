@@ -154,6 +154,7 @@ body:not(.is-studio) .display__title { font-size: 14px; font-weight: 600; color:
 }
 .displays__hint { color: var(--text-muted); }
 .displays__spacer { flex: 1; }
+.displays__rate { color: var(--text-dim); font-variant-numeric: tabular-nums; }
 .displays__label { color: var(--text-dim); }
 
 /* ---- Panel (dock) ---- */

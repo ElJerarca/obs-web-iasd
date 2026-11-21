@@ -15,8 +15,20 @@ import { reportError } from '../toast.js'
 import { icons } from './icons.js'
 
 const PREF_KEY = 'obsctl.preview'
-const MAX_WIDTH = 1280
-const QUALITY = 60 // 0..100, solo afecta a formatos con compresión (jpg/webp)
+const INTERVALS = [250, 500, 1000, 2000, 5000]
+const MIN_GAP_MS = 40 // pausa mínima entre ciclos para no saturar a OBS
+
+/**
+ * Perfil de captura según el intervalo: cuanto más rápido, más pequeña y
+ * comprimida la imagen, para que OBS y la red puedan seguir el ritmo.
+ * quality (0..100) solo afecta a formatos con compresión (jpg/webp).
+ */
+function profileFor (interval) {
+  if (interval <= 250) return { maxWidth: 640, quality: 35 }
+  if (interval <= 500) return { maxWidth: 800, quality: 45 }
+  if (interval <= 1000) return { maxWidth: 960, quality: 55 }
+  return { maxWidth: 1280, quality: 60 }
+}
 
 function readPrefs () {
   try { return JSON.parse(localStorage.getItem(PREF_KEY)) ?? {} } catch { return {} }
@@ -67,6 +79,7 @@ export class PreviewController {
   #errors = 0
   #format = 'png'
   #aspect = 16 / 9
+  #frames = [] // marcas de tiempo de imágenes mostradas (para medir img/s)
 
   constructor (client, views, els) {
     this.#client = client
@@ -75,13 +88,14 @@ export class PreviewController {
 
     const prefs = readPrefs()
     if (typeof prefs.enabled === 'boolean') this.#enabled = prefs.enabled
-    if ([1000, 2000, 5000].includes(prefs.interval)) this.#interval = prefs.interval
+    if (INTERVALS.includes(prefs.interval)) this.#interval = prefs.interval
     els.interval.value = String(this.#interval)
 
     els.toggle.addEventListener('click', () => this.setEnabled(!this.#enabled))
     els.interval.addEventListener('change', () => {
       this.#interval = Number(els.interval.value)
       this.#save()
+      this.#clearRate() // medir de nuevo con el intervalo nuevo
       this.refresh()
     })
     this.#renderState()
@@ -142,6 +156,11 @@ export class PreviewController {
     return this.#enabled && this.#visible && this.#client.connected
   }
 
+  #clearRate () {
+    this.#frames = []
+    if (this.#els.rate) this.#els.rate.textContent = ''
+  }
+
   #schedule (delay) {
     clearTimeout(this.#timer)
     this.#timer = null
@@ -149,23 +168,40 @@ export class PreviewController {
       if (delay === 0) this.#again = true // la captura en curso programará la siguiente
       return
     }
-    if (!this.#active()) return
+    if (!this.#active()) {
+      this.#clearRate()
+      return
+    }
     this.#timer = setTimeout(() => this.#captureAll(), delay)
+  }
+
+  /** Imágenes por segundo realmente mostradas (últimos 3 s). */
+  #updateRate (now) {
+    this.#frames = this.#frames.filter((t) => now - t < 3000)
+    const rate = this.#els.rate
+    if (!rate) return
+    rate.textContent = this.#active() && this.#frames.length
+      ? `≈ ${(this.#frames.length / 3).toFixed(1)} img/s`
+      : ''
   }
 
   #targetSize (view) {
     const { width, height } = view.stage.getBoundingClientRect()
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
     // Ajustar al área disponible manteniendo la relación de aspecto del lienzo de OBS
+    const { maxWidth } = profileFor(this.#interval)
     let w = Math.min(width, height * this.#aspect) * dpr
-    w = Math.max(64, Math.min(MAX_WIDTH, Math.round(w / 2) * 2))
+    w = Math.max(64, Math.min(maxWidth, Math.round(w / 2) * 2))
     return { width: w, height: Math.max(8, Math.round(w / this.#aspect)) }
   }
 
   async #captureAll () {
     if (!this.#active() || this.#busy) return
     this.#busy = true
+    const started = performance.now()
+    const { quality } = profileFor(this.#interval)
     let failed = null
+    let shown = false // al menos una pantalla se actualizó en este ciclo
     try {
       // Una captura por visor, en secuencia (nunca en paralelo)
       for (const view of this.#views) {
@@ -178,10 +214,13 @@ export class PreviewController {
             imageFormat: this.#format,
             imageWidth: width,
             imageHeight: height,
-            imageCompressionQuality: QUALITY
+            imageCompressionQuality: quality
           })
           // Descartar si la escena del visor cambió mientras se capturaba
-          if (this.#enabled && imageData && view.source === source) view.show(imageData)
+          if (this.#enabled && imageData && view.source === source) {
+            view.show(imageData)
+            shown = true
+          }
         } catch (e) {
           failed = e
         }
@@ -196,7 +235,15 @@ export class PreviewController {
       }
       const again = this.#again
       this.#again = false
-      const delay = this.#errors ? Math.min(this.#interval * 2 ** this.#errors, 15000) : this.#interval
+      // Se cuenta una imagen por ciclo (cada pantalla se actualiza a ese ritmo)
+      if (shown) this.#frames.push(performance.now())
+      this.#updateRate(performance.now())
+      // El intervalo se cuenta desde el inicio del ciclo: si la captura tardó
+      // 150 ms y el intervalo es 250 ms, solo se esperan 100 ms más.
+      const elapsed = performance.now() - started
+      const delay = this.#errors
+        ? Math.min(this.#interval * 2 ** this.#errors, 15000)
+        : Math.max(MIN_GAP_MS, this.#interval - elapsed)
       this.#schedule(again ? 0 : delay)
     }
   }

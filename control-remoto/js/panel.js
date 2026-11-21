@@ -59,7 +59,8 @@ function main (session) {
   const previewView = new ScreenshotView({ stage: $('preview-stage'), img: $('preview-img'), placeholder: $('preview-placeholder') })
   const screenshots = new PreviewController(client, [programView, previewView], {
     toggle: $('preview-toggle'),
-    interval: $('preview-interval')
+    interval: $('preview-interval'),
+    rate: $('preview-rate')
   })
   const transitions = new TransitionsPanel(client, {
     trigger: $('btn-transition'),

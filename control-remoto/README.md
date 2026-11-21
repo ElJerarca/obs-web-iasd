@@ -147,8 +147,14 @@ server {
 - El protocolo **no transmite video**. La vista previa son capturas JPEG
   (`GetSourceScreenshot`) enviadas en Base64 por el mismo WebSocket, a 1, 2 o 5 s
   por imagen.
-- Cada captura obliga a OBS a renderizar y codificar una imagen. En equipos
-  justos, usa 5 s o desactívala; el ajuste se recuerda en el navegador.
+- Intervalos de 0,25 s a 5 s. Cuanto más rápido, más pequeña y comprimida es
+  la imagen (0,25 s: 640 px, calidad 35; 0,5 s: 800 px; 1 s: 960 px; 2–5 s:
+  hasta 1280 px). El intervalo cuenta desde el inicio de cada captura, y la barra
+  muestra las **img/s** reales. Con 0,25 s se logran unas 3–4 img/s si OBS
+  responde rápido.
+- Cada captura obliga a OBS a renderizar y codificar una imagen. En Modo Estudio
+  son dos por ciclo. Si el CPU de la barra de estado sube mucho o la transmisión
+  pierde fotogramas, usa 1 s o más; el ajuste se recuerda en el navegador.
 - No hay audio, y la imagen tiene uno o más segundos de retraso.
 - Se pausa sola si la pestaña está oculta o no hay conexión. Nunca se piden dos
   capturas a la vez.
