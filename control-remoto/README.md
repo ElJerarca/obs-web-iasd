@@ -25,6 +25,9 @@ dependencias ni paso de compilación: son archivos estáticos.
 
 ```
 control-remoto/
+├── iniciar.bat           Windows: levanta el servidor web con doble clic
+├── instalar-arranque.bat Windows: arranque automático al iniciar sesión
+├── quitar-arranque.bat   Windows: quita el arranque automático
 ├── index.html            Página de inicio de sesión
 ├── panel.html            Panel principal (disposición tipo OBS)
 ├── css/
@@ -79,6 +82,25 @@ python3 -m http.server 8080        # o: npx serve -l 8080
 
 En el campo URL puedes escribir solo `192.168.1.50`: se completa a
 `ws://192.168.1.50:4455`.
+
+### En Windows con doble clic (PC donde está OBS)
+
+En la carpeta hay tres scripts:
+
+| Archivo | Qué hace |
+|---|---|
+| `iniciar.bat` | Busca Python, comprueba que el puerto 8080 esté libre, muestra las direcciones para entrar desde la red y levanta el servidor. Se detiene cerrando la ventana. |
+| `instalar-arranque.bat` | Crea un acceso directo minimizado en la carpeta *Inicio* de Windows. El servidor arranca solo al iniciar sesión. No pide administrador. |
+| `quitar-arranque.bat` | Quita ese arranque automático. |
+
+Requisitos: Python instalado (`winget install Python.Python.3.12`) y el puerto
+8080 permitido en el firewall (red de perfil *Privada*):
+
+```powershell
+New-NetFirewallRule -DisplayName "Control remoto OBS - Web" -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow -Profile Private
+```
+
+Si mueves la carpeta, vuelve a ejecutar `instalar-arranque.bat`.
 
 ### Publicarlo bajo HTTPS (opcional)
 
