@@ -40,7 +40,8 @@ rem (Get-NetTCPConnection no depende del idioma de Windows, netstat si)
 powershell -NoProfile -Command "if (Get-NetTCPConnection -LocalPort %PUERTO% -State Listen -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"
 if not errorlevel 1 (
   echo [AVISO] El puerto %PUERTO% ya esta en uso.
-  echo   Probablemente el servidor ya esta funcionando en otra ventana.
+  echo   Probablemente el servidor ya esta funcionando (en otra ventana o en segundo
+  echo   plano por la tarea programada). Para detenerlo usa detener-servidor.bat
   echo   Si no es asi, cierra el programa que usa ese puerto o cambia PUERTO en este archivo.
   pause
   exit /b 1
@@ -62,7 +63,7 @@ echo   Para detener el servidor: cierra esta ventana o pulsa Ctrl+C.
 echo  ============================================================
 echo.
 
-%PY% -m http.server %PUERTO% --bind 0.0.0.0
+%PY% "%~dp0servidor.py" --puerto %PUERTO%
 
 echo.
 echo El servidor se detuvo.

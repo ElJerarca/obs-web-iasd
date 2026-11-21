@@ -1,34 +1,18 @@
 @echo off
 setlocal
 rem ==================================================================
-rem  Hace que el servidor web arranque solo al iniciar sesion en Windows.
-rem  Crea un acceso directo (minimizado) a iniciar.bat en la carpeta
-rem  "Inicio" del usuario actual. No requiere permisos de administrador.
+rem  Arranque SILENCIOSO: crea una tarea en el Programador de tareas que
+rem  inicia el servidor web sin ninguna ventana cada vez que este usuario
+rem  inicia sesion en Windows. Lo arranca tambien en este momento.
 rem ==================================================================
-
-cd /d "%~dp0"
-if not exist "iniciar.bat" (
-  echo [ERROR] No se encontro iniciar.bat en esta carpeta.
-  pause
-  exit /b 1
+rem Pedir permisos de administrador si no se tienen (necesarios para la tarea programada)
+net session >nul 2>&1
+if errorlevel 1 (
+  echo Solicitando permisos de administrador...
+  powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
+  exit /b
 )
 
-set "OBJETIVO=%~dp0iniciar.bat"
-set "CARPETA=%~dp0"
-set "ACCESO=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Control remoto OBS.lnk"
-
-rem WindowStyle 7 = ventana minimizada
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:ACCESO); $s.TargetPath = $env:OBJETIVO; $s.WorkingDirectory = $env:CARPETA; $s.WindowStyle = 7; $s.Description = 'Servidor web del control remoto de OBS'; $s.Save()"
-
-if exist "%ACCESO%" (
-  echo.
-  echo  [OK] Listo. El servidor arrancara minimizado cada vez que inicies sesion.
-  echo.
-  echo  Importante:
-  echo   - Si mueves esta carpeta a otro lugar, vuelve a ejecutar este archivo.
-  echo   - Para quitar el arranque automatico, ejecuta quitar-arranque.bat
-  echo.
-) else (
-  echo [ERROR] No se pudo crear el acceso directo.
-)
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0arranque.ps1" -Accion Instalar
+echo.
 pause

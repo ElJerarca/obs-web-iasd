@@ -25,9 +25,12 @@ dependencias ni paso de compilación: son archivos estáticos.
 
 ```
 control-remoto/
-├── iniciar.bat           Windows: levanta el servidor web con doble clic
-├── instalar-arranque.bat Windows: arranque automático al iniciar sesión
-├── quitar-arranque.bat   Windows: quita el arranque automático
+├── servidor.py           Servidor web estático (MIME correctos, registro en servidor.log)
+├── iniciar.bat           Windows: servidor con ventana (doble clic)
+├── instalar-arranque.bat Windows: tarea programada silenciosa al iniciar sesión
+├── detener-servidor.bat  Windows: detiene el servidor en segundo plano
+├── quitar-arranque.bat   Windows: elimina la tarea programada
+├── arranque.ps1          Lógica de la tarea programada (la usan los .bat)
 ├── index.html            Página de inicio de sesión
 ├── panel.html            Panel principal (disposición tipo OBS)
 ├── css/
@@ -73,7 +76,7 @@ estático:
 
 ```bash
 cd control-remoto
-python3 -m http.server 8080        # o: npx serve -l 8080
+python3 servidor.py --puerto 8080  # o: python3 -m http.server 8080
 ```
 
 - En el mismo PC que OBS: abre `http://localhost:8080` y usa `ws://localhost:4455`.
@@ -85,13 +88,20 @@ En el campo URL puedes escribir solo `192.168.1.50`: se completa a
 
 ### En Windows con doble clic (PC donde está OBS)
 
-En la carpeta hay tres scripts:
-
 | Archivo | Qué hace |
 |---|---|
-| `iniciar.bat` | Busca Python, comprueba que el puerto 8080 esté libre, muestra las direcciones para entrar desde la red y levanta el servidor. Se detiene cerrando la ventana. |
-| `instalar-arranque.bat` | Crea un acceso directo minimizado en la carpeta *Inicio* de Windows. El servidor arranca solo al iniciar sesión. No pide administrador. |
-| `quitar-arranque.bat` | Quita ese arranque automático. |
+| `iniciar.bat` | Levanta el servidor **con ventana** (útil para probar). Busca Python, comprueba que el puerto 8080 esté libre y muestra las direcciones de acceso. Se detiene cerrando la ventana. |
+| `instalar-arranque.bat` | Crea una tarea en el **Programador de tareas** que inicia el servidor **sin ninguna ventana** cada vez que el usuario inicia sesión, y lo arranca en ese momento. Pide permisos de administrador. |
+| `detener-servidor.bat` | Detiene el servidor en segundo plano. Vuelve a arrancar en el próximo inicio de sesión. |
+| `quitar-arranque.bat` | Detiene el servidor y elimina la tarea. |
+| `servidor.py` | Servidor web usado por todo lo anterior. Fija los tipos MIME, no sirve los scripts y escribe un registro en `servidor.log`. |
+| `arranque.ps1` | Lógica de la tarea programada; los `.bat` la llaman. |
+
+La tarea ejecuta `pythonw.exe` (Python sin consola) con estas condiciones: solo
+para el usuario actual y sin privilegios elevados, sin límite de tiempo (Windows
+detiene las tareas a los 3 días por defecto), con 3 reintentos si falla al
+arrancar y una sola instancia. Para verla: *Programador de tareas → Biblioteca →
+"Control remoto OBS"*.
 
 Requisitos: Python instalado (`winget install Python.Python.3.12`) y el puerto
 8080 permitido en el firewall (red de perfil *Privada*):
@@ -100,7 +110,8 @@ Requisitos: Python instalado (`winget install Python.Python.3.12`) y el puerto
 New-NetFirewallRule -DisplayName "Control remoto OBS - Web" -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow -Profile Private
 ```
 
-Si mueves la carpeta, vuelve a ejecutar `instalar-arranque.bat`.
+Si mueves la carpeta, vuelve a ejecutar `instalar-arranque.bat`. Si el
+servidor no responde, revisa `servidor.log`.
 
 ### Publicarlo bajo HTTPS (opcional)
 
