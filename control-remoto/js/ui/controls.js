@@ -4,6 +4,7 @@
  */
 
 import { reportError } from '../toast.js'
+import { confirmDialog } from './confirm.js'
 
 // Valores de outputState en StreamStateChanged / RecordStateChanged.
 // VERIFICAR en la documentación si se usan estados adicionales en tu versión.
@@ -25,6 +26,7 @@ class OutputControl {
   #cfg
   #state = 'idle'
   #busy = false
+  #confirming = false // evita abrir dos modales con doble clic
 
   constructor (client, cfg) {
     this.#client = client
@@ -90,8 +92,16 @@ class OutputControl {
 
   async #onClick () {
     const { startRequest, stopRequest, confirmStop, labels } = this.#cfg
-    const running = RUNNING.has(this.#state)
-    if (running && confirmStop && !window.confirm(confirmStop)) return
+    if (this.#confirming) return
+    let running = RUNNING.has(this.#state)
+    if (running && confirmStop) {
+      this.#confirming = true
+      const ok = await confirmDialog({ ...confirmStop, danger: true })
+      this.#confirming = false
+      if (!ok) return
+      running = RUNNING.has(this.#state) // el estado pudo cambiar mientras el modal estaba abierto
+      if (!running) return
+    }
     this.#apply(running ? 'stopping' : 'starting')
     try {
       await this.#client.call(running ? stopRequest : startRequest)
@@ -113,7 +123,12 @@ export class Controls {
       statusRequest: 'GetStreamStatus',
       startRequest: 'StartStream',
       stopRequest: 'StopStream',
-      confirmStop: '¿Detener la transmisión en vivo?',
+      confirmStop: {
+        title: '¿Detener la transmisión?',
+        message: 'La transmisión en vivo terminará para todos los espectadores. Esta acción no se puede deshacer.',
+        confirmText: 'Detener transmisión',
+        cancelText: 'Seguir transmitiendo'
+      },
       labels: { start: 'Iniciar transmisión', stop: 'Detener transmisión', starting: 'Iniciando…', stopping: 'Deteniendo…' }
     })
     this.record = new OutputControl(client, {

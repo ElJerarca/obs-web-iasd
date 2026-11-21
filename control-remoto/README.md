@@ -46,6 +46,7 @@ control-remoto/
         ├── sources.js    Panel Fuentes
         ├── audio.js      Mezclador y medidores (canvas + requestAnimationFrame)
         ├── controls.js   Transmisión, grabación y cámara virtual
+        ├── confirm.js    Modal de confirmación (p. ej. al detener la transmisión)
         ├── transitions.js Botón Transición, tipo y duración (Modo Estudio)
         ├── preview.js    Pantallas de programa y vista previa por capturas
         └── status.js     Barra de estado (conexión, CPU, FPS)
